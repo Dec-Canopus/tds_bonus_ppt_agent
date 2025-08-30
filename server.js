@@ -10,7 +10,7 @@ const JSZip = require('jszip');
 const PizZip = require('pizzip');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = 8000;
 
 // Configure multer for file uploads
 const upload = multer({ 
