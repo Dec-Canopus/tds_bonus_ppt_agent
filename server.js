@@ -10,7 +10,9 @@ const JSZip = require('jszip');
 const PizZip = require('pizzip');
 
 const app = express();
-const PORT = 8000;
+const port = process.env.PORT || 3000;
+
+
 
 // Configure multer for file uploads
 const upload = multer({ 
@@ -36,10 +38,10 @@ app.use(cors());
 //     next();
 // });
 
-// // Routes
-// app.get('/', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'index.html'));
-// });
+// Routes
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public')); // Serve frontend files
@@ -950,7 +952,7 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, 0.0.0.0, () => {
   console.log(`🚀 AI Presentation Generator Backend running on port ${PORT}`);
   console.log(`📱 Frontend: http://localhost:${PORT}`);
   console.log(`🔗 API Health: http://localhost:${PORT}/api/health`);
