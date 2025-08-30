@@ -27,6 +27,20 @@ const upload = multer({
 
 // Middleware
 app.use(cors());
+
+// Security headers
+app.use((req, res, next) => {
+    res.header('X-Content-Type-Options', 'nosniff');
+    res.header('X-Frame-Options', 'DENY');
+    res.header('X-XSS-Protection', '1; mode=block');
+    next();
+});
+
+// Routes
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public')); // Serve frontend files
 
