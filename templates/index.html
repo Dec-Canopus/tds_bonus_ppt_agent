@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Text-to-PPTX</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="data:,">
+  <style>
+    :root{
+      --violet:#7c3aed; /* violet-600 */
+      --cyan:#06b6d4;   /* cyan-500  */
+      --emerald:#10b981;/* emerald-500 */
+      --amber:#f59e0b;  /* amber-500  */
+    }
+    /* Brand gradient text */
+    .brand {
+      letter-spacing:.5px;
+      background: linear-gradient(90deg,var(--violet),var(--cyan),var(--emerald),var(--amber));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      background-size:300% 300%;
+      animation: brand-move 12s ease infinite;
+    }
+    @keyframes brand-move {
+      0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%}
+    }
+
+    /* Cards with soft glow border */
+    .card {
+      border-radius: 1rem;
+      background: white;
+      position: relative;
+      box-shadow:
+        0 1px 2px rgba(0,0,0,0.05),
+        0 12px 30px rgba(124,58,237,0.08);
+    }
+    .card::before{
+      content:"";
+      position:absolute; inset:-2px; border-radius:1.05rem; z-index:-1;
+      background: linear-gradient(120deg, rgba(124,58,237,.35), rgba(6,182,212,.35), rgba(16,185,129,.35));
+      filter: blur(16px); opacity:.35;
+    }
+
+    /* Buttons */
+    .btn { transition: transform .08s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease; }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary{
+      background: linear-gradient(90deg,var(--violet),var(--cyan),var(--emerald));
+      color:white;
+      box-shadow: 0 10px 24px rgba(124,58,237,.25);
+    }
+    .btn-primary:hover{ opacity:.95 }
+    .btn-ghost{
+      border:1px solid rgba(124,58,237,.25);
+      background: rgba(124,58,237,.06);
+      color:#6d28d9; /* violet-700 */
+    }
+    .btn-ghost:hover{ background: rgba(124,58,237,.12) }
+
+    /* Inputs */
+    .input, .select, .textarea, .file {
+      border:1px solid #e5e7eb; /* gray-200 */
+      border-radius:.75rem;
+      background: rgba(255,255,255,.92);
+      transition: box-shadow .2s ease, border-color .2s ease;
+    }
+    .input:focus, .select:focus, .textarea:focus, .file:focus {
+      outline:none;
+      border-color: rgba(6,182,212,.6);
+      box-shadow: 0 0 0 3px rgba(6,182,212,.15);
+    }
+
+    /* Helper text */
+    .hint { color:#64748b; font-size:.9rem } /* slate-500 */
+
+    /* Pretty preview cards */
+    .preview-card{
+      border:1px solid rgba(6,182,212,.35);
+      background: linear-gradient(145deg,#fff, rgba(6,182,212,.06));
+      border-radius:.75rem;
+    }
+
+    /* Page BG */
+    body{
+      background: radial-gradient(1200px 700px at -10% -10%, rgba(124,58,237,.10), transparent 60%),
+                  radial-gradient(900px 600px at 110% 10%, rgba(6,182,212,.10), transparent 60%),
+                  radial-gradient(900px 600px at 50% 120%, rgba(16,185,129,.10), transparent 60%),
+                  #f8fafc; /* slate-50 */
+    }
+  </style>
+</head>
+<body>
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <header class="mb-8 flex items-center justify-between">
+      <h1 class="text-2xl md:text-3xl font-semibold brand">Auto-Generate a Presentation using Your Text & Style</h1>
+      <div class="flex items-center gap-3">
+        <label class="text-sm text-slate-700">Theme</label>
+        <select id="themeSelect" class="select px-2 py-1 text-sm">
+          <option value="default" selected>Default</option>
+          <option value="ocean">Ocean</option>
+          <option value="sunset">Sunset</option>
+          <option value="forest">Forest</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <section class="lg:col-span-2 card p-6">
+        <form id="genForm" method="post" action="/generate" enctype="multipart/form-data" class="space-y-5">
+          <div>
+            <label class="block text-sm font-medium mb-1 text-slate-800">Paste your text or markdown</label>
+            <textarea name="inputText" rows="10" class="textarea w-full px-3 py-2" placeholder="# Title&#10;- bullet 1&#10;- bullet 2" required></textarea>
+            <p class="hint mt-1">We do not store your content. It is used in-memory to plan slides.</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1 text-slate-800">Optional one-line guidance</label>
+            <input name="guidance" type="text" class="input w-full px-3 py-2" placeholder="e.g., turn into an investor pitch deck">
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1 text-slate-800">LLM provider</label>
+              <select id="providerSelect" name="provider" class="select w-full px-3 py-2">
+                <option value="aipipe">AI-Pipe</option>
+                <option value="openai">OpenAI</option>
+                <option value="gemini">Google Gemini</option>
+              </select>
+              <p id="providerHint" class="hint mt-1"></p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1 text-slate-800">Model (optional)</label>
+              <input id="modelInput" name="model" type="text" class="input w-full px-3 py-2" placeholder="auto" list="modelPresets">
+              <datalist id="modelPresets"></datalist>
+              <p id="modelHint" class="hint mt-1"></p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1 text-slate-800">API key</label>
+              <input id="apiKeyInput" name="apiKey" type="password" class="input w-full px-3 py-2" placeholder="paste your key" required>
+              <p class="hint mt-1">
+                Paste only the token — no “Bearer ”, no spaces. Keys aren’t stored.
+                <span id="apiKeyHint" class="ml-1 text-slate-500"></span>
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1 text-slate-800">Upload PPTX/POTX template or deck</label>
+            <input name="templateFile" type="file" accept=".pptx,.potx" class="file w-full px-3 py-2 bg-white" required>
+            <p class="hint mt-1">We will inherit layouts, fonts, and colors from your file and reuse its images.</p>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" name="includeNotes" class="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500">
+              <span class="text-sm text-slate-800">Auto-create speaker notes</span>
+            </label>
+          </div>
+
+          <div class="flex flex-wrap gap-3 pt-2">
+            <button id="submitBtn" class="btn btn-primary px-4 py-2 rounded-lg">Generate .pptx</button>
+            <button id="previewBtn" type="button" class="btn btn-ghost px-4 py-2 rounded-lg">Preview slide plan</button>
+            <button id="testBtn" type="button" class="btn btn-ghost px-4 py-2 rounded-lg">Test model</button>
+            <span id="testStatus" class="text-sm text-slate-600"></span>
+          </div>
+
+          <div id="progress" class="hidden mt-3 text-sm text-slate-600">Processing…</div>
+        </form>
+      </section>
+
+      <aside class="card p-6">
+        <h2 class="text-lg font-medium mb-2 text-slate-900">How it works</h2>
+        <ol class="list-decimal ml-5 space-y-2 text-sm text-slate-800">
+          <li>We ask your chosen LLM to map your text into a concise slide plan.</li>
+          <li>We open your PPT template to inherit styles, layouts, and theme colors.</li>
+          <li>We render slides with titles and bullets, and optionally speaker notes.</li>
+          <li>We reuse images present in your template for tasteful accents.</li>
+        </ol>
+        <p class="hint mt-3">No AI image generation is used. Keys and text are not stored.</p>
+
+        <div class="mt-6">
+          <h3 class="text-sm font-medium mb-1 text-slate-900">Tips</h3>
+        <ul class="list-disc ml-5 text-sm space-y-1 text-slate-800">
+            <li>Add a one-line guidance like “sales deck”, “research summary”, or “visual-heavy”.</li>
+            <li>Use a clean template with clear Title/Content layouts.</li>
+            <li>You can deploy this app to Render/Railway in minutes.</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <section id="previewPanel" class="card p-6 mt-6 hidden">
+      <h2 class="text-lg font-medium mb-3 text-slate-900">Slide Plan Preview</h2>
+      <div id="previewList" class="space-y-3"></div>
+    </section>
+
+  </div>
+
+  <script>
+    const form = document.getElementById('genForm');
+    const progress = document.getElementById('progress');
+    const previewBtn = document.getElementById('previewBtn');
+    const testBtn = document.getElementById('testBtn');
+    const testStatus = document.getElementById('testStatus');
+    const previewPanel = document.getElementById('previewPanel');
+    const previewList = document.getElementById('previewList');
+
+    form.addEventListener('submit', () => { progress.classList.remove('hidden'); });
+
+    previewBtn.addEventListener('click', async () => {
+      const fd = new FormData(form);
+      progress.classList.remove('hidden');
+      try {
+        const res = await fetch('/preview', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Preview failed");
+        previewList.innerHTML = '';
+        data.slides.forEach((s, i) => {
+          const div = document.createElement('div');
+          div.className = 'preview-card p-4';
+          const bullets = (s.bullets || []).map(b => `<li>${b}</li>`).join('');
+          div.innerHTML = `<div class="text-sm text-slate-500 mb-2">Slide ${i+1} — <code class="text-violet-700">${s.layout_hint}</code></div>
+                           <div class="font-medium text-slate-900">${s.title || '(no title)'}</div>
+                           <ul class="list-disc ml-6 text-sm text-slate-800">${bullets}</ul>`;
+          previewList.appendChild(div);
+        });
+        previewPanel.classList.remove('hidden');
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        progress.classList.add('hidden');
+      }
+    });
+
+    // Test model with a 1-line sample via /preview (no file needed)
+    testBtn.addEventListener('click', async () => {
+      const fd = new FormData(form);
+      fd.set('inputText', 'Write 3 scannable bullets about solar energy.'); // minimal sample
+      fd.set('guidance', 'test slide planning');
+      testStatus.textContent = 'Testing…';
+      testBtn.disabled = true;
+      try {
+        const res = await fetch('/preview', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) {
+          testStatus.textContent = '✅ Model OK';
+        } else {
+          testStatus.textContent = `❌ ${data.error || 'Preview failed'}`;
+        }
+      } catch (e) {
+        testStatus.textContent = `❌ ${e.message}`;
+      } finally {
+        setTimeout(() => { testStatus.textContent=''; testBtn.disabled=false; }, 3000);
+      }
+    });
+
+    /* -------------------------
+       Provider-aware model presets
+       ------------------------- */
+    const providerSelect = document.getElementById('providerSelect');
+    const modelInput     = document.getElementById('modelInput');
+    const modelPresets   = document.getElementById('modelPresets');
+    const providerHint   = document.getElementById('providerHint');
+    const modelHint      = document.getElementById('modelHint');
+    const apiKeyInput    = document.getElementById('apiKeyInput');
+    const apiKeyHint     = document.getElementById('apiKeyHint');
+
+    const PRESETS = {
+      openai: {
+        models: ["gpt-4o-mini", "gpt-4o"],
+        hint: "If you see quota errors, add billing on OpenAI or switch provider.",
+        keyHint: "Expected key prefix: sk-",
+        keyPlaceholder: "sk-XXXXXXXXXXXXXXXXXXXXXXXX"
+      },
+      gemini: {
+        models: ["gemini-2.5-pro", "gemini-2.5-flash"],
+        hint: "Pro = stronger reasoning; Flash = faster/cheaper. Free tier has daily caps.",
+        keyHint: "Expected key prefix: AIza… (or long Cloud key)",
+        keyPlaceholder: "AIzaSyA-Your-Gemini-Key"
+      },
+      aipipe: {
+        models: ["gpt-4o", "claude-3-5-sonnet", "gemini-2.5-pro"],
+        hint: "AI-Pipe routes to your configured provider behind one key.",
+        keyHint: "Expected key: JWT-like (eyJ…) or ap_…",
+        keyPlaceholder: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…"
+      }
+    };
+
+    function refreshModelPresets() {
+      const key = (providerSelect.value || "").toLowerCase();
+      const set = PRESETS[key] || {models: [], hint: "", keyHint: "", keyPlaceholder: "paste your key"};
+      // models datalist
+      modelPresets.innerHTML = "";
+      set.models.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m;
+        modelPresets.appendChild(opt);
+      });
+      modelInput.placeholder = set.models[0] || "auto";
+      providerHint.textContent = key ? `Provider: ${providerSelect.options[providerSelect.selectedIndex].text}` : "";
+      modelHint.textContent = set.hint || "";
+      // api key hint + placeholder
+      apiKeyHint.textContent = set.keyHint || "";
+      apiKeyInput.placeholder = set.keyPlaceholder || "paste your key";
+    }
+    providerSelect.addEventListener('change', refreshModelPresets);
+    refreshModelPresets();
+
+    /* -------------------------
+       Theme switcher (CSS vars)
+       ------------------------- */
+    const themeSelect = document.getElementById('themeSelect');
+    themeSelect.addEventListener('change', () => {
+      const r = document.documentElement.style;
+      const t = themeSelect.value;
+      if (t === 'ocean') {
+        r.setProperty('--violet','#6366f1'); r.setProperty('--cyan','#06b6d4'); r.setProperty('--emerald','#22c55e'); r.setProperty('--amber','#38bdf8');
+      } else if (t === 'sunset') {
+        r.setProperty('--violet','#ef4444'); r.setProperty('--cyan','#f97316'); r.setProperty('--emerald','#eab308'); r.setProperty('--amber','#fb7185');
+      } else if (t === 'forest') {
+        r.setProperty('--violet','#14532d'); r.setProperty('--cyan','#16a34a'); r.setProperty('--emerald','#065f46'); r.setProperty('--amber','#84cc16');
+      } else {
+        r.setProperty('--violet','#7c3aed'); r.setProperty('--cyan','#06b6d4'); r.setProperty('--emerald','#10b981'); r.setProperty('--amber','#f59e0b');
+      }
+    });
+  </script>
+</body>
+</html>

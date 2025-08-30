@@ -1,0 +1,12 @@
+# Core
+Flask==3.0.3
+Werkzeug>=3.0.0     # flask depends on this; version pin avoids surprises
+requests==2.32.3
+
+# PPTX generation
+python-pptx==0.6.23
+lxml>=4.9.0         # required by python-pptx
+Pillow>=9.5.0       # python-pptx needs this for image handling
+
+# Deployment helpers
+gunicorn>=21.2.0    # production WSGI server (Railway/Render)
